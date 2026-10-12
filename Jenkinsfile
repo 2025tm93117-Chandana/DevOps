@@ -13,6 +13,7 @@ pipeline {
 
     environment {
         VENV = '.venv'
+        IMAGE = 'aceest-fitness'
     }
 
     stages {
@@ -61,6 +62,28 @@ pipeline {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                     sh 'sonar-scanner -Dsonar.host.url=${SONAR_HOST_URL} -Dsonar.token=${SONAR_TOKEN} -Dsonar.qualitygate.wait=true'
                 }
+            }
+        }
+
+         stage('Docker Build') {
+            steps {
+                sh 'docker build -t ${IMAGE}:${BUILD_NUMBER} -t ${IMAGE}:latest .'
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh '''
+                    docker rm -f ${IMAGE} || true
+                    docker run -d --name ${IMAGE} -p 5000:5000 \
+                        -v aceest_data:/data --restart unless-stopped ${IMAGE}:latest
+                    for i in $(seq 1 10); do
+                        curl -fsS http://localhost:5000/health && exit 0
+                        sleep 2
+                    done
+                    docker logs ${IMAGE}
+                    exit 1
+                '''
             }
         }
     }
