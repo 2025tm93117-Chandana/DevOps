@@ -42,7 +42,7 @@ pipeline {
             steps {
                 sh '''
                     . ${VENV}/bin/activate
-                    python -m pytest -v --junitxml=test-results.xml
+                    python -m pytest -v --junitxml=test-results.xml --cov=app --cov-report=term-missing --cov-report=xml
                 '''
             }
             post {
