@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Lint (syntax check)
+        run: python -m py_compile app.py test_app.py
+
+  docker-test:
+    needs: build-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -t aceest-fitness:ci .
+      - name: Run Pytest inside the container
+        run: docker run --rm aceest-fitness:ci python -m pytest -v
