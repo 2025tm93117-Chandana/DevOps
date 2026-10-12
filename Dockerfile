@@ -10,6 +10,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py test_app.py ./
+COPY templates ./templates
+COPY static ./static
 
 RUN useradd --system --uid 1001 appuser \
     && mkdir /data \

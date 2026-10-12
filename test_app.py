@@ -3,6 +3,8 @@ from datetime import date, timedelta
 import pytest
 
 from app import PROGRAM_TEMPLATES, create_app
+from app import PROGRAM_TEMPLATES, __version__, create_app
+
 
 
 @pytest.fixture
@@ -18,16 +20,32 @@ def bob(client):
 
 
 # ---------- General ----------
-def test_index_lists_endpoints(client):
+def test_dashboard_served_at_root(client):
     res = client.get("/")
     assert res.status_code == 200
-    assert "endpoints" in res.get_json()
+    assert res.mimetype == "text/html"
+    assert b"ACEest" in res.data
 
+
+@pytest.mark.parametrize("path", ["/static/app.js", "/static/style.css"])
+def test_static_assets_served(client, path):
+    assert client.get(path).status_code == 200
+
+
+def test_api_index_lists_endpoints(client):
+    res = client.get("/api")
+    assert res.status_code == 200
+    assert "endpoints" in res.get_json()
 
 def test_health(client):
     res = client.get("/health")
     assert res.status_code == 200
     assert res.get_json() == {"status": "ok"}
+
+def test_version(client):
+    res = client.get("/version")
+    assert res.status_code == 200
+    assert res.get_json() == {"version": __version__}
 
 
 def test_programs(client):

@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ACEest Fitness &amp; Gym</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <h1>ACEest <span>Fitness &amp; Gym</span></h1>
+    <span id="version" class="version"></span>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <h2>Clients</h2>
+      <ul id="client-list" class="client-list"></ul>
+      <form id="add-client-form" class="stack">
+        <input name="name" placeholder="New client name" maxlength="80" required>
+        <button type="submit">Add client</button>
+      </form>
+    </aside>
+
+    <section class="detail">
+      <div id="empty" class="empty">Select or add a client to get started.</div>
+
+      <div id="client-view" hidden>
+        <div class="card">
+          <div class="card-head">
+            <h2 id="client-name"></h2>
+            <span id="membership-badge" class="badge"></span>
+            <div class="spacer"></div>
+            <button id="generate-program" type="button">Generate program</button>
+            <button id="delete-client" type="button" class="danger">Delete</button>
+          </div>
+          <dl id="stats" class="stats"></dl>
+        </div>
+
+        <div class="card">
+          <h3>Profile</h3>
+          <form id="profile-form" class="grid">
+            <label>Age <input name="age" type="number" min="0"></label>
+            <label>Height (cm) <input name="height" type="number" min="0" step="0.1"></label>
+            <label>Weight (kg) <input name="weight" type="number" min="0" step="0.1"></label>
+            <label>Target weight (kg) <input name="target_weight" type="number" min="0" step="0.1"></label>
+            <label>Calories <input name="calories" type="number" min="0"></label>
+            <label>Target adherence (%) <input name="target_adherence" type="number" min="0" max="100"></label>
+            <label>Membership
+              <select name="membership_status">
+                <option>Active</option>
+                <option>Inactive</option>
+                <option>Expired</option>
+              </select>
+            </label>
+            <label>Renewal date <input name="membership_end" type="date"></label>
+            <div class="form-actions"><button type="submit">Save profile</button></div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="tabs">
+            <button type="button" class="tab active" data-tab="workouts">Workouts</button>
+            <button type="button" class="tab" data-tab="progress">Progress</button>
+          </div>
+
+          <div id="tab-workouts" class="panel">
+            <table class="table">
+              <thead><tr><th>Date</th><th>Type</th><th>Minutes</th><th>Notes</th></tr></thead>
+              <tbody id="workout-rows"></tbody>
+            </table>
+            <p id="workouts-empty" class="muted" hidden>No workouts logged yet.</p>
+            <form id="workout-form" class="grid">
+              <label>Date <input name="date" type="date" required></label>
+              <label>Type
+                <select name="workout_type">
+                  <option>Strength</option>
+                  <option>Hypertrophy</option>
+                  <option>Cardio</option>
+                  <option>Mobility</option>
+                </select>
+              </label>
+              <label>Minutes <input name="duration_min" type="number" min="1" value="60" required></label>
+              <label>Notes <input name="notes" maxlength="200"></label>
+              <div class="form-actions"><button type="submit">Add workout</button></div>
+            </form>
+          </div>
+
+          <div id="tab-progress" class="panel" hidden>
+            <div id="progress-bars" class="bars"></div>
+            <p id="progress-empty" class="muted" hidden>No progress entries yet.</p>
+            <form id="progress-form" class="grid">
+              <label>Week <input name="week" placeholder="e.g. Week 1" maxlength="30" required></label>
+              <label>Adherence (%) <input name="adherence" type="number" min="0" max="100" required></label>
+              <div class="form-actions"><button type="submit">Add entry</button></div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

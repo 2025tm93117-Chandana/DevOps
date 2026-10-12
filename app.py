@@ -5,6 +5,9 @@ import sqlite3
 from datetime import date, datetime
 
 from flask import Flask, g, jsonify, request
+from flask import Flask, g, jsonify, render_template, request
+
+__version__ = "1.1.0"
 
 PROGRAM_TEMPLATES = {
     "Fat Loss": ["Full Body HIIT", "Circuit Training", "Cardio + Weights"],
@@ -155,11 +158,16 @@ def create_app(config=None):
     # ---------- General ----------
     @app.get("/")
     def index():
+        return render_template("index.html")
+
+    @app.get("/api")
+    def api_index():
         return jsonify(
             service="ACEest Fitness & Gym API",
             endpoints=[
                 "GET /health",
                 "GET|POST /clients",
+                "GET /version",
                 "GET|PUT|DELETE /clients/<name>",
                 "POST /clients/<name>/program",
                 "GET /clients/<name>/membership",
@@ -172,6 +180,10 @@ def create_app(config=None):
     @app.get("/health")
     def health():
         return jsonify(status="ok")
+
+    @app.get("/version")
+    def version():
+        return jsonify(version=__version__)
 
     @app.get("/programs")
     def programs():
