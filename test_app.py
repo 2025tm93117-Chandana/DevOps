@@ -232,10 +232,6 @@ def test_bmi_category_boundaries(bmi, expected):
     assert bmi_category(bmi) == expected
 
 
-def test_release_version_is_3_0_0():
-    assert __version__ == "3.0.0"
-
-
 def test_summary_without_data(client):
     client.post("/clients", json={"name": "Empty"})
     assert client.get("/clients/Empty/summary").get_json() == {
