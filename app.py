@@ -7,7 +7,7 @@ from datetime import date, datetime
 from flask import Flask, g, jsonify, request
 from flask import Flask, g, jsonify, render_template, request
 
-__version__ = "2.0.0"
+__version__ = "3.0.0"
 
 PROGRAM_TEMPLATES = {
     "Fat Loss": ["Full Body HIIT", "Circuit Training", "Cardio + Weights"],
@@ -104,6 +104,16 @@ def validate_client(data):
     return out
 
 
+def bmi_category(bmi):
+    if bmi < 18.5:
+        return "Underweight"
+    if bmi < 25:
+        return "Normal"
+    if bmi < 30:
+        return "Overweight"
+    return "Obese"
+
+
 def create_app(config=None):
     app = Flask(__name__)
     app.config["DATABASE"] = os.environ.get("ACEEST_DB", "aceest_fitness.db")
@@ -172,6 +182,7 @@ def create_app(config=None):
                 "GET|PUT|DELETE /clients/<name>",
                 "POST /clients/<name>/program",
                 "GET /clients/<name>/membership",
+                "GET /clients/<name>/summary",
                 "GET|POST /clients/<name>/workouts",
                 "GET|POST /clients/<name>/progress",
                 "GET /programs",
@@ -291,6 +302,39 @@ def create_app(config=None):
         if end and date.fromisoformat(end) < date.today():
             status = "Expired"
         return jsonify(client=name, status=status, renewal_date=end)
+
+    # ---------- Summary ----------
+    @app.get("/clients/<name>/summary")
+    def client_summary(name):
+        client, err = client_or_404(name)
+        if err:
+            return err
+        db = get_db()
+        workouts = db.execute(
+            "SELECT COUNT(*) AS n, COALESCE(SUM(duration_min), 0) AS minutes, MAX(date) AS last "
+            "FROM workouts WHERE client_name=?",
+            (name,),
+        ).fetchone()
+        avg = db.execute(
+            "SELECT AVG(adherence) AS avg FROM progress WHERE client_name=?", (name,)
+        ).fetchone()["avg"]
+        avg = None if avg is None else round(avg, 1)
+
+        bmi = None
+        if client["height"] and client["weight"]:
+            bmi = round(client["weight"] / (client["height"] / 100) ** 2, 1)
+        target = client["target_adherence"]
+        return jsonify(
+            client=name,
+            bmi=bmi,
+            bmi_category=None if bmi is None else bmi_category(bmi),
+            workout_count=workouts["n"],
+            total_minutes=workouts["minutes"],
+            last_workout=workouts["last"],
+            avg_adherence=avg,
+            target_adherence=target,
+            on_target=None if avg is None or target is None else avg >= target,
+        )
 
     # ---------- Workouts ----------
     @app.get("/clients/<name>/workouts")

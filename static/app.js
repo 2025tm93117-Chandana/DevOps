@@ -95,19 +95,20 @@ async function selectClient(name) {
 // ---------- Client detail ----------
 async function loadClient() {
   const name = currentClient;
-  const [client, membership, workouts, progress] = await Promise.all([
+  const [client, membership, summary, workouts, progress] = await Promise.all([
     api(clientPath(name)),
     api(`${clientPath(name)}/membership`),
+    api(`${clientPath(name)}/summary`),
     api(`${clientPath(name)}/workouts`),
     api(`${clientPath(name)}/progress`),
   ]);
-  renderHeader(client, membership);
+  renderHeader(client, membership, summary);
   renderProfileForm(client);
   renderWorkouts(workouts);
   renderProgress(progress);
 }
 
-function renderHeader(client, membership) {
+function renderHeader(client, membership, summary) {
   $("#client-name").textContent = client.name;
   $("#client-avatar").textContent = initials(client.name);
   const badge = $("#membership-badge");
@@ -115,7 +116,10 @@ function renderHeader(client, membership) {
   badge.className = `badge ${membership.status.toLowerCase()}`;
 
   const orDash = (v) => (v === null || v === undefined || v === "" ? "-" : v);
-  const bmi = client.height && client.weight ? (client.weight / (client.height / 100) ** 2).toFixed(1) : "-";
+  const bmi = summary.bmi === null ? "-" : `${summary.bmi} (${summary.bmi_category})`;
+  const adherence = summary.avg_adherence === null
+    ? "-"
+    : `${summary.avg_adherence}%${summary.target_adherence === null ? "" : ` / ${summary.target_adherence}% target`}`;
   const stats = [
     ["Age", orDash(client.age)],
     ["Height", client.height ? `${client.height} cm` : "-"],
@@ -125,6 +129,9 @@ function renderHeader(client, membership) {
     ["Calories", orDash(client.calories)],
     ["Program", orDash(client.program)],
     ["Renewal", orDash(membership.renewal_date)],
+    ["Workouts", `${summary.workout_count} (${summary.total_minutes} min)`],
+    ["Last workout", orDash(summary.last_workout)],
+    ["Avg adherence", adherence],
   ];
   const dl = $("#stats");
   dl.replaceChildren();
