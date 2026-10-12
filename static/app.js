@@ -2,6 +2,7 @@ const $ = (selector) => document.querySelector(selector);
 
 let currentClient = null;
 let toastTimer = null;
+let allClients = [];
 
 async function api(path, { method = "GET", body } = {}) {
   const res = await fetch(path, {
@@ -24,9 +25,19 @@ function toast(message, isError = false) {
   toastTimer = setTimeout(() => { el.hidden = true; }, 3500);
 }
 
+async function refreshStats() {
+  const s = await api("/stats");
+  $("#stat-clients").textContent = s.total_clients;
+  $("#stat-active").textContent = s.active_members;
+  $("#stat-expired").textContent = s.expired_members;
+  $("#stat-workouts").textContent = s.total_workouts;
+  $("#stat-adherence").textContent = s.avg_adherence === null ? "-" : `${s.avg_adherence}%`;
+}
+
 async function run(action) {
   try {
     await action();
+    await refreshStats();
   } catch (err) {
     toast(err.message, true);
   }
@@ -41,25 +52,42 @@ function cell(tag, text, className) {
 
 const clientPath = (name) => `/clients/${encodeURIComponent(name)}`;
 
+function initials(name) {
+  const parts = name.trim().split(/\s+/);
+  return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
+}
+
 // ---------- Client list ----------
 async function loadClients() {
-  const clients = await api("/clients");
+  allClients = await api("/clients");
+  renderClientList();
+  return allClients;
+}
+
+function renderClientList() {
+  const query = $("#client-search").value.trim().toLowerCase();
   const list = $("#client-list");
   list.replaceChildren();
-  for (const c of clients) {
+  $("#client-count").textContent = String(allClients.length);
+  for (const c of allClients) {
+    if (query && !c.name.toLowerCase().includes(query)) continue;
     const li = document.createElement("li");
-    const btn = cell("button", c.name);
+    const btn = document.createElement("button");
     btn.type = "button";
     btn.classList.toggle("active", c.name === currentClient);
+    btn.append(cell("span", initials(c.name), "avatar"), cell("span", c.name, "client-label"));
     btn.addEventListener("click", () => run(() => selectClient(c.name)));
     li.append(btn);
+    list.append(li);
+  }
+  if (!list.children.length) {
+    const li = cell("li", query ? "No matching clients" : "No clients yet", "muted list-note");
     list.append(li);
   }
 }
 
 async function selectClient(name) {
   currentClient = name;
-  $("#empty").hidden = true;
   $("#client-view").hidden = false;
   await Promise.all([loadClients(), loadClient()]);
 }
@@ -81,15 +109,18 @@ async function loadClient() {
 
 function renderHeader(client, membership) {
   $("#client-name").textContent = client.name;
+  $("#client-avatar").textContent = initials(client.name);
   const badge = $("#membership-badge");
   badge.textContent = membership.status;
   badge.className = `badge ${membership.status.toLowerCase()}`;
 
   const orDash = (v) => (v === null || v === undefined || v === "" ? "-" : v);
+  const bmi = client.height && client.weight ? (client.weight / (client.height / 100) ** 2).toFixed(1) : "-";
   const stats = [
     ["Age", orDash(client.age)],
     ["Height", client.height ? `${client.height} cm` : "-"],
     ["Weight", client.weight ? `${client.weight} kg` : "-"],
+    ["BMI", bmi],
     ["Target weight", client.target_weight ? `${client.target_weight} kg` : "-"],
     ["Calories", orDash(client.calories)],
     ["Program", orDash(client.program)],
@@ -143,6 +174,8 @@ function renderProgress(entries) {
 }
 
 // ---------- Events ----------
+$("#client-search").addEventListener("input", renderClientList);
+
 $("#add-client-form").addEventListener("submit", (e) => {
   e.preventDefault();
   const form = e.currentTarget;
@@ -167,8 +200,8 @@ $("#delete-client").addEventListener("click", () => run(async () => {
   toast(`Deleted ${currentClient}`);
   currentClient = null;
   $("#client-view").hidden = true;
-  $("#empty").hidden = false;
-  await loadClients();
+  const clients = await loadClients();
+  if (clients.length) await selectClient(clients[0].name);
 }));
 
 $("#profile-form").addEventListener("submit", (e) => {
@@ -233,6 +266,7 @@ for (const tab of document.querySelectorAll(".tab")) {
 // ---------- Init ----------
 $("#workout-form").elements.date.value = new Date().toISOString().slice(0, 10);
 run(async () => {
-  const [{ version }] = await Promise.all([api("/version"), loadClients()]);
+  const [{ version }, clients] = await Promise.all([api("/version"), loadClients()]);
   $("#version").textContent = `v${version}`;
+  if (clients.length) await selectClient(clients[0].name);
 });

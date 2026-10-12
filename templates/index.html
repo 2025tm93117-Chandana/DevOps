@@ -8,26 +8,40 @@
 </head>
 <body>
   <header class="topbar">
-    <h1>ACEest <span>Fitness &amp; Gym</span></h1>
+    <div class="brand">
+      <span class="logo" aria-hidden="true">A</span>
+      <h1>ACEest <span>Fitness &amp; Gym</span></h1>
+    </div>
     <span id="version" class="version"></span>
   </header>
 
+  <section id="summary" class="summary">
+    <div class="tile"><span class="tile-label">Clients</span><strong id="stat-clients">0</strong></div>
+    <div class="tile"><span class="tile-label">Active members</span><strong id="stat-active">0</strong></div>
+    <div class="tile"><span class="tile-label">Expired</span><strong id="stat-expired">0</strong></div>
+    <div class="tile"><span class="tile-label">Workouts logged</span><strong id="stat-workouts">0</strong></div>
+    <div class="tile"><span class="tile-label">Avg adherence</span><strong id="stat-adherence">-</strong></div>
+  </section>
+
   <main class="layout">
     <aside class="sidebar">
-      <h2>Clients</h2>
+      <div class="side-head">
+        <h2>Clients</h2>
+        <span id="client-count" class="count">0</span>
+      </div>
+      <input id="client-search" class="search" type="search" placeholder="Search clients" autocomplete="off">
       <ul id="client-list" class="client-list"></ul>
-      <form id="add-client-form" class="stack">
+      <form id="add-client-form" class="add-client">
         <input name="name" placeholder="New client name" maxlength="80" required>
-        <button type="submit">Add client</button>
+        <button type="submit">Add</button>
       </form>
     </aside>
 
     <section class="detail">
-      <div id="empty" class="empty">Select or add a client to get started.</div>
-
       <div id="client-view" hidden>
-        <div class="card">
+        <div class="card hero">
           <div class="card-head">
+            <span id="client-avatar" class="avatar large"></span>
             <h2 id="client-name"></h2>
             <span id="membership-badge" class="badge"></span>
             <div class="spacer"></div>

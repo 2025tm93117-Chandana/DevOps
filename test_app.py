@@ -2,9 +2,7 @@ from datetime import date, timedelta
 
 import pytest
 
-from app import PROGRAM_TEMPLATES, create_app
 from app import PROGRAM_TEMPLATES, __version__, create_app
-
 
 
 @pytest.fixture
@@ -32,15 +30,65 @@ def test_static_assets_served(client, path):
     assert client.get(path).status_code == 200
 
 
+def test_dashboard_has_summary_and_search_but_no_empty_message(client):
+    html = client.get("/").data
+    assert b'id="summary"' in html
+    assert b'id="client-search"' in html
+    assert b"Select or add a client" not in html
+
+
+# ---------- Stats ----------
+def test_stats_empty(client):
+    assert client.get("/stats").get_json() == {
+        "total_clients": 0,
+        "active_members": 0,
+        "expired_members": 0,
+        "total_workouts": 0,
+        "total_minutes": 0,
+        "avg_adherence": None,
+    }
+
+
+def test_stats_with_data(client):
+    future = (date.today() + timedelta(days=30)).isoformat()
+    past = (date.today() - timedelta(days=1)).isoformat()
+    client.post("/clients", json={"name": "Active", "membership_end": future})
+    client.post("/clients", json={"name": "Lapsed", "membership_end": past})
+    client.post("/clients", json={"name": "Gone", "membership_status": "Expired"})
+    client.post("/clients", json={"name": "Paused", "membership_status": "Inactive"})
+    client.post("/clients/Active/workouts", json={"workout_type": "Cardio", "duration_min": 30})
+    client.post("/clients/Active/workouts", json={"workout_type": "Strength", "duration_min": 45})
+    client.post("/clients/Active/progress", json={"week": "W1", "adherence": 80})
+    client.post("/clients/Lapsed/progress", json={"week": "W1", "adherence": 71})
+
+    stats = client.get("/stats").get_json()
+    assert stats["total_clients"] == 4
+    assert stats["active_members"] == 1
+    assert stats["expired_members"] == 2
+    assert stats["total_workouts"] == 2
+    assert stats["total_minutes"] == 75
+    assert stats["avg_adherence"] == 75.5
+
+
+def test_stats_updates_after_delete(client, bob):
+    client.post(f"/clients/{bob}/workouts", json={"workout_type": "Cardio", "duration_min": 20})
+    client.delete(f"/clients/{bob}")
+    stats = client.get("/stats").get_json()
+    assert stats["total_clients"] == 0
+    assert stats["total_workouts"] == 0
+
+
 def test_api_index_lists_endpoints(client):
     res = client.get("/api")
     assert res.status_code == 200
     assert "endpoints" in res.get_json()
 
+
 def test_health(client):
     res = client.get("/health")
     assert res.status_code == 200
     assert res.get_json() == {"status": "ok"}
+
 
 def test_version(client):
     res = client.get("/version")

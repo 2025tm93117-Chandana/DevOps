@@ -7,7 +7,7 @@ from datetime import date, datetime
 from flask import Flask, g, jsonify, request
 from flask import Flask, g, jsonify, render_template, request
 
-__version__ = "1.1.0"
+__version__ = "2.0.0"
 
 PROGRAM_TEMPLATES = {
     "Fat Loss": ["Full Body HIIT", "Circuit Training", "Cardio + Weights"],
@@ -167,6 +167,7 @@ def create_app(config=None):
             endpoints=[
                 "GET /health",
                 "GET|POST /clients",
+                "GET /stats",
                 "GET /version",
                 "GET|PUT|DELETE /clients/<name>",
                 "POST /clients/<name>/program",
@@ -184,6 +185,29 @@ def create_app(config=None):
     @app.get("/version")
     def version():
         return jsonify(version=__version__)
+
+    @app.get("/stats")
+    def stats():
+        db = get_db()
+        today = date.today().isoformat()
+        clients = db.execute("SELECT membership_status, membership_end FROM clients").fetchall()
+        expired = active = 0
+        for c in clients:
+            lapsed = c["membership_status"] == "Expired" or bool(c["membership_end"] and c["membership_end"] < today)
+            expired += lapsed
+            active += c["membership_status"] == "Active" and not lapsed
+        workouts = db.execute(
+            "SELECT COUNT(*) AS n, COALESCE(SUM(duration_min), 0) AS minutes FROM workouts"
+        ).fetchone()
+        avg = db.execute("SELECT AVG(adherence) AS avg FROM progress").fetchone()["avg"]
+        return jsonify(
+            total_clients=len(clients),
+            active_members=active,
+            expired_members=expired,
+            total_workouts=workouts["n"],
+            total_minutes=workouts["minutes"],
+            avg_adherence=None if avg is None else round(avg, 1),
+        )
 
     @app.get("/programs")
     def programs():
