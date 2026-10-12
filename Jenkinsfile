@@ -18,6 +18,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
+                echo "Checking Out SourceCode"
                 cleanWs()
                 checkout scm
             }
@@ -25,6 +26,7 @@ pipeline {
 
         stage('Build') {
             steps {
+                echo "installing Python Dependencies"
                 sh '''
                     python3 -m venv ${VENV}
                     . ${VENV}/bin/activate
