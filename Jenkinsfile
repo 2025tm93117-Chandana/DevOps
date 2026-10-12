@@ -50,6 +50,19 @@ pipeline {
                 }
             }
         }
+
+        
+        stage('Code Quality') {
+            environment {
+                PATH = "/opt/sonar-scanner/bin:${env.PATH}"
+                SONAR_HOST_URL = 'http://localhost:9000'
+            }
+            steps {
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    sh 'sonar-scanner -Dsonar.host.url=${SONAR_HOST_URL} -Dsonar.token=${SONAR_TOKEN} -Dsonar.qualitygate.wait=true'
+                }
+            }
+        }
     }
 
     post {
