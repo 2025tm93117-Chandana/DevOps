@@ -36,6 +36,20 @@ pipeline {
                 '''
             }
         }
+
+        stage('Test') {
+            steps {
+                sh '''
+                    . ${VENV}/bin/activate
+                    python -m pytest -v --junitxml=test-results.xml
+                '''
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'test-results.xml'
+                }
+            }
+        }
     }
 
     post {
