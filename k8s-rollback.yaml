@@ -1,0 +1,69 @@
+---
+# Rollback Strategy Guide
+# 
+# Kubernetes automatically maintains revision history for deployments
+# You can easily rollback to previous versions using kubectl commands
+#
+# ROLLBACK COMMANDS:
+# 1. View rollout history:
+#    kubectl rollout history deployment/acefitness-app -n acefitness
+#
+# 2. View details of a specific revision:
+#    kubectl rollout history deployment/acefitness-app -n acefitness --revision=2
+#
+# 3. Rollback to previous version:
+#    kubectl rollout undo deployment/acefitness-app -n acefitness
+#
+# 4. Rollback to specific revision:
+#    kubectl rollout undo deployment/acefitness-app -n acefitness --to-revision=2
+#
+# 5. Check rollout status:
+#    kubectl rollout status deployment/acefitness-app -n acefitness
+#
+# 6. Pause rollout (useful for canary deployments):
+#    kubectl rollout pause deployment/acefitness-app -n acefitness
+#
+# 7. Resume rollout:
+#    kubectl rollout resume deployment/acefitness-app -n acefitness
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rollback-procedures
+  namespace: acefitness
+data:
+  rollback-guide.txt: |
+    ACEFITNESS KUBERNETES ROLLBACK PROCEDURES
+    ==========================================
+    
+    1. AUTOMATIC ROLLBACK ON FAILURE
+    - Kubernetes health checks (liveness and readiness probes) automatically 
+      detect failed deployments
+    - If a pod fails 3 consecutive health checks, it's restarted
+    - If all pods in a deployment fail, the previous version is kept running
+    
+    2. MANUAL ROLLBACK PROCEDURES
+    
+    Option A: Rollback to immediate previous version
+      kubectl rollout undo deployment/acefitness-app -n acefitness
+    
+    Option B: Rollback to specific revision
+      kubectl rollout undo deployment/acefitness-app -n acefitness --to-revision=2
+    
+    Option C: Blue-Green Rollback
+      kubectl patch service acefitness-bluegreen -n acefitness \
+        -p '{"spec":{"selector":{"slot":"blue"}}}'
+    
+    3. VERIFY ROLLBACK STATUS
+      kubectl rollout status deployment/acefitness-app -n acefitness
+      kubectl get pods -n acefitness -o wide
+      kubectl logs -f deployment/acefitness-app -n acefitness
+    
+    4. ROLLBACK HISTORY
+      kubectl rollout history deployment/acefitness-app -n acefitness
+      
+    5. ZERO-DOWNTIME ROLLBACK
+    - The rolling update strategy ensures no downtime during rollback
+    - maxSurge: 1 (one extra pod during update)
+    - maxUnavailable: 0 (no pods are unavailable)
+    - terminationGracePeriodSeconds: 30 (graceful shutdown)
