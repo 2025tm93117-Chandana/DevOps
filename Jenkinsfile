@@ -18,7 +18,8 @@ pipeline {
         DOCKER_HUB_CREDENTIALS = 'dockerhub-credentials'
         KUBECONFIG = '/home/jenkins/.kube/config'
         K8S_NAMESPACE = 'acefitness'
-        KUBECTL = 'minikube kubectl --'
+        KUBECTL = '/usr/local/bin/minikube kubectl --'
+        HOME = '/home/jenkins'
     }
 
     stages {
