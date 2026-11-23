@@ -1,0 +1,125 @@
+---
+# Blue-Green Deployment Strategy
+# This manifests shows how to do Blue-Green deployments
+# Blue = current version (v1), Green = new version (v2)
+# To switch traffic, change the selector in the service from version: v1 to version: v2
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: acefitness-blue
+  namespace: acefitness
+  labels:
+    app: acefitness
+    slot: blue
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: acefitness
+      slot: blue
+  template:
+    metadata:
+      labels:
+        app: acefitness
+        slot: blue
+        version: v1
+    spec:
+      containers:
+      - name: acefitness
+        image: 2025tm93117/acefitness:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5000
+          name: http
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        env:
+        - name: DEPLOYMENT_SLOT
+          value: "blue"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: acefitness-green
+  namespace: acefitness
+  labels:
+    app: acefitness
+    slot: green
+spec:
+  replicas: 0  # Initially 0, scale up when ready to switch
+  selector:
+    matchLabels:
+      app: acefitness
+      slot: green
+  template:
+    metadata:
+      labels:
+        app: acefitness
+        slot: green
+        version: v2
+    spec:
+      containers:
+      - name: acefitness
+        image: 2025tm93117/acefitness:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 5000
+          name: http
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        env:
+        - name: DEPLOYMENT_SLOT
+          value: "green"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: acefitness-bluegreen
+  namespace: acefitness
+  labels:
+    app: acefitness
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 5000
+    protocol: TCP
+    nodePort: 30001
+  selector:
+    app: acefitness
+    slot: blue  # Change to 'green' to switch traffic
