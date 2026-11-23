@@ -14,6 +14,8 @@ pipeline {
     environment {
         VENV = '.venv'
         IMAGE = 'aceest-fitness'
+        DOCKER_HUB_REPO = '2025tm93117/acefitness'
+        DOCKER_HUB_CREDENTIALS = 'dockerhub-credentials'
     }
 
     stages {
@@ -67,7 +69,27 @@ pipeline {
 
          stage('Docker Build') {
             steps {
-                sh 'docker build -t ${IMAGE}:${BUILD_NUMBER} -t ${IMAGE}:latest .'
+                sh 'docker build -t ${IMAGE}:${BUILD_NUMBER} -t ${IMAGE}:latest -t ${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER} .'
+            }
+        }
+
+        stage('Docker Test') {
+            steps {
+                sh 'docker run --rm ${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER} python -m pytest -q'
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: '${DOCKER_HUB_CREDENTIALS}', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                        echo ${DOCKER_PASS} | docker login -u ${DOCKER_USER} --password-stdin
+                        docker push ${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER}
+                        docker tag ${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER} ${DOCKER_HUB_REPO}:latest
+                        docker push ${DOCKER_HUB_REPO}:latest
+                        docker logout
+                    '''
+                }
             }
         }
 
