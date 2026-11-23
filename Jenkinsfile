@@ -16,6 +16,8 @@ pipeline {
         IMAGE = 'aceest-fitness'
         DOCKER_HUB_REPO = '2025tm93117/acefitness'
         DOCKER_HUB_CREDENTIALS = 'dockerhub-credentials'
+        KUBECONFIG = '/home/jenkins/.kube/config'
+        K8S_NAMESPACE = 'acefitness'
     }
 
     stages {
@@ -100,6 +102,112 @@ pipeline {
                     docker logs ${IMAGE}
                     exit 1
                 '''
+            }
+        }
+
+        stage('Kubernetes - Create Namespace') {
+            steps {
+                script {
+                    sh '''
+                        echo "Creating Kubernetes namespace..."
+                        kubectl apply -f k8s-namespace.yaml || true
+                        kubectl get namespace ${K8S_NAMESPACE}
+                    '''
+                }
+            }
+        }
+
+        stage('Kubernetes - Deploy Application') {
+            steps {
+                script {
+                    sh '''
+                        echo "Deploying application to Kubernetes..."
+                        kubectl apply -f k8s-deployment.yaml
+                        kubectl apply -f k8s-service.yaml
+                        
+                        echo "Waiting for deployment to be ready..."
+                        kubectl rollout status deployment/acefitness-app -n ${K8S_NAMESPACE} --timeout=5m
+                    '''
+                }
+            }
+        }
+
+        stage('Kubernetes - Verify Deployment') {
+            steps {
+                script {
+                    sh '''
+                        echo "Verifying Kubernetes deployment..."
+                        
+                        echo "=== Deployment Status ==="
+                        kubectl get deployments -n ${K8S_NAMESPACE}
+                        
+                        echo "=== Pod Status ==="
+                        kubectl get pods -n ${K8S_NAMESPACE} -o wide
+                        
+                        echo "=== Service Status ==="
+                        kubectl get svc -n ${K8S_NAMESPACE}
+                        
+                        echo "=== Pod Logs ==="
+                        kubectl logs -n ${K8S_NAMESPACE} $(kubectl get pod -n ${K8S_NAMESPACE} -l app=acefitness -o jsonpath='{.items[0].metadata.name}') || true
+                        
+                        echo "=== Testing Health Endpoint ==="
+                        POD_NAME=$(kubectl get pod -n ${K8S_NAMESPACE} -l app=acefitness -o jsonpath='{.items[0].metadata.name}')
+                        kubectl exec -n ${K8S_NAMESPACE} ${POD_NAME} -- curl -s http://localhost:5000/health || true
+                    '''
+                }
+            }
+        }
+
+        stage('Kubernetes - Blue-Green Setup (Optional)') {
+            steps {
+                script {
+                    sh '''
+                        echo "Blue-Green deployment manifests are available in k8s-blue-green.yaml"
+                        echo "To deploy Blue-Green: kubectl apply -f k8s-blue-green.yaml"
+                        echo "To switch to Green: kubectl patch service acefitness-bluegreen -n ${K8S_NAMESPACE} -p '{\"spec\":{\"selector\":{\"slot\":\"green\"}}}'
+                        echo "To rollback to Blue: kubectl patch service acefitness-bluegreen -n ${K8S_NAMESPACE} -p '{\"spec\":{\"selector\":{\"slot\":\"blue\"}}}'
+                    '''
+                }
+            }
+        }
+
+        stage('Kubernetes - Deployment Info') {
+            steps {
+                script {
+                    sh '''
+                        echo "======================================="
+                        echo "Kubernetes Deployment Complete!"
+                        echo "======================================="
+                        echo ""
+                        echo "Application Details:"
+                        echo "- Namespace: ${K8S_NAMESPACE}"
+                        echo "- Deployment: acefitness-app"
+                        echo "- Replicas: 3"
+                        echo "- Image: ${IMAGE}:latest"
+                        echo ""
+                        echo "Service Details:"
+                        echo "- Service Name: acefitness-service"
+                        echo "- Type: NodePort"
+                        echo "- Port: 80 → 5000"
+                        echo "- NodePort: 30000"
+                        echo ""
+                        echo "To access the application:"
+                        echo "1. Get Minikube IP: minikube ip"
+                        echo "2. Access: http://<MINIKUBE_IP>:30000"
+                        echo "3. Health check: http://<MINIKUBE_IP>:30000/health"
+                        echo ""
+                        echo "To view logs:"
+                        echo "kubectl logs -f deployment/acefitness-app -n ${K8S_NAMESPACE}"
+                        echo ""
+                        echo "To scale deployment:"
+                        echo "kubectl scale deployment acefitness-app -n ${K8S_NAMESPACE} --replicas=5"
+                        echo ""
+                        echo "To rollback to previous version:"
+                        echo "kubectl rollout undo deployment/acefitness-app -n ${K8S_NAMESPACE}"
+                        echo ""
+                        echo "======================================="
+                    '''
+                }
             }
         }
     }
