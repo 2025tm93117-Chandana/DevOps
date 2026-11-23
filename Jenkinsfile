@@ -82,40 +82,11 @@ pipeline {
         stage('Docker Push') {
             steps {
                 script {
-                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    withDockerRegistry([credentialsId: 'dockerhub-credentials', url: 'https://index.docker.io/v1/']) {
                         sh '''
-                            # Remove existing credentials to avoid conflicts
-                            rm -rf ~/.docker/config.json
-                            
-                            # Use docker credential helper approach with direct config file creation
-                            mkdir -p ~/.docker
-                            
-                            # Workaround: Use base64 encoding with printf outside the subshell masking scope
-                            echo -n "${DOCKER_USER}:${DOCKER_PASS}" > /tmp/creds.txt
-                            cat /tmp/creds.txt | base64 -w 0 > /tmp/auth.b64
-                            AUTH=$(cat /tmp/auth.b64)
-                            rm /tmp/creds.txt /tmp/auth.b64
-                            
-                            cat > ~/.docker/config.json << DOCKER_CONFIG
-{
-  "auths": {
-    "https://index.docker.io/v1/": {
-      "auth": "${AUTH}"
-    }
-  }
-}
-DOCKER_CONFIG
-                            
-                            chmod 600 ~/.docker/config.json
-                            cat ~/.docker/config.json
-                            
-                            # Push images
                             docker push ${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER}
                             docker tag ${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER} ${DOCKER_HUB_REPO}:latest
                             docker push ${DOCKER_HUB_REPO}:latest
-                            
-                            # Cleanup
-                            rm -rf ~/.docker
                         '''
                     }
                 }
