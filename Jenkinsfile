@@ -88,9 +88,10 @@ pipeline {
                             rm -rf ~/.docker
                             mkdir -p ~/.docker
                             
-                            # Write credentials to temp file (Jenkins won't mask file contents)
-                            CREDENTIALS="${DOCKER_USER}:${DOCKER_PASS}"
-                            AUTH_ENCODED=$(printf '%s' "${CREDENTIALS}" | base64 -w 0)
+                            # Write credentials to temp file and encode
+                            echo -n "${DOCKER_USER}:${DOCKER_PASS}" | base64 -w 0 > /tmp/docker_auth.b64
+                            AUTH_ENCODED=$(cat /tmp/docker_auth.b64)
+                            rm /tmp/docker_auth.b64
                             
                             # Create auth config
                             cat > ~/.docker/config.json << EOF
