@@ -84,22 +84,23 @@ pipeline {
                 script {
                     withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         sh '''
-                            # Create a temporary script file to avoid Jenkins masking issues
-                            cat > /tmp/docker_push.sh << 'SCRIPT'
-#!/bin/bash
-set -e
-mkdir -p ~/.docker
-rm -f ~/.docker/config.json
-echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(echo -n "$1:$2" | base64 -w 0)\"}}}" > ~/.docker/config.json
-chmod 600 ~/.docker/config.json
-docker push $3:3.0.0-build$4
-docker tag $3:3.0.0-build$4 $3:latest
-docker push $3:latest
-rm -f ~/.docker/config.json
-SCRIPT
-                            chmod +x /tmp/docker_push.sh
-                            /tmp/docker_push.sh "${DOCKER_USER}" "${DOCKER_PASS}" "${DOCKER_HUB_REPO}" "${BUILD_NUMBER}"
-                            rm -f /tmp/docker_push.sh
+                            # Clear any existing Docker config
+                            rm -rf ~/.docker
+                            mkdir -p ~/.docker
+                            
+                            # Login using docker CLI directly
+                            echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
+                            
+                            # Push images
+                            docker push ${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER}
+                            docker tag ${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER} ${DOCKER_HUB_REPO}:latest
+                            docker push ${DOCKER_HUB_REPO}:latest
+                            
+                            # Logout
+                            docker logout
+                            
+                            # Clean up config
+                            rm -rf ~/.docker
                         '''
                     }
                 }
