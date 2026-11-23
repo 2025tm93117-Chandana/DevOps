@@ -81,24 +81,25 @@ pipeline {
 
         stage('Docker Push') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh '''
-                        mkdir -p ~/.docker
-                        ENCODED=$(echo -n "${DOCKER_USER}:${DOCKER_PASS}" | base64 -w 0)
-                        cat > ~/.docker/config.json <<EOF
-{
-  "auths": {
-    "https://index.docker.io/v1/": {
-      "auth": "${ENCODED}"
-    }
-  }
-}
-EOF
-                        docker push ${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER}
-                        docker tag ${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER} ${DOCKER_HUB_REPO}:latest
-                        docker push ${DOCKER_HUB_REPO}:latest
-                        rm -f ~/.docker/config.json
-                    '''
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh '''
+                            # Create a temporary script file to avoid Jenkins masking issues
+                            cat > /tmp/docker_push.sh << 'SCRIPT'
+#!/bin/bash
+set -e
+mkdir -p ~/.docker
+echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(echo -n "$1:$2" | base64 -w 0)\"}}}" > ~/.docker/config.json
+docker push $3:3.0.0-build$4
+docker tag $3:3.0.0-build$4 $3:latest
+docker push $3:latest
+rm -f ~/.docker/config.json
+SCRIPT
+                            chmod +x /tmp/docker_push.sh
+                            /tmp/docker_push.sh "${DOCKER_USER}" "${DOCKER_PASS}" "${DOCKER_HUB_REPO}" "${BUILD_NUMBER}"
+                            rm -f /tmp/docker_push.sh
+                        '''
+                    }
                 }
             }
         }
