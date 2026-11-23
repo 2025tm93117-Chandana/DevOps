@@ -3,7 +3,7 @@ pipeline {
 
     triggers {
         githubPush()
-        pollSCM('H/5 * * * *')
+        pollSCM('* * * * *')
     }
 
     options {
@@ -83,11 +83,21 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        mkdir -p ~/.docker
+                        cat > ~/.docker/config.json <<EOF
+{
+  "auths": {
+    "https://index.docker.io/v1/": {
+      "auth": "$(echo -n "${DOCKER_USER}:${DOCKER_PASS}" | base64)"
+    }
+  }
+}
+EOF
+                        chmod 600 ~/.docker/config.json
                         docker push ${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER}
                         docker tag ${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER} ${DOCKER_HUB_REPO}:latest
                         docker push ${DOCKER_HUB_REPO}:latest
-                        docker logout
+                        rm -f ~/.docker/config.json
                     '''
                 }
             }
