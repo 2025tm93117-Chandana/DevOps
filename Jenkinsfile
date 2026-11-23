@@ -18,6 +18,7 @@ pipeline {
         DOCKER_HUB_CREDENTIALS = 'dockerhub-credentials'
         KUBECONFIG = '/home/jenkins/.kube/config'
         K8S_NAMESPACE = 'acefitness'
+        KUBECTL = 'minikube kubectl --'
     }
 
     stages {
@@ -110,8 +111,8 @@ pipeline {
                 script {
                     sh '''
                         echo "Creating Kubernetes namespace..."
-                        kubectl apply -f k8s-namespace.yaml || true
-                        kubectl get namespace ${K8S_NAMESPACE}
+                        ${KUBECTL} apply -f k8s-namespace.yaml || true
+                        ${KUBECTL} get namespace ${K8S_NAMESPACE}
                     '''
                 }
             }
@@ -122,11 +123,11 @@ pipeline {
                 script {
                     sh '''
                         echo "Deploying application to Kubernetes..."
-                        kubectl apply -f k8s-deployment.yaml
-                        kubectl apply -f k8s-service.yaml
+                        ${KUBECTL} apply -f k8s-deployment.yaml
+                        ${KUBECTL} apply -f k8s-service.yaml
                         
                         echo "Waiting for deployment to be ready..."
-                        kubectl rollout status deployment/acefitness-app -n ${K8S_NAMESPACE} --timeout=5m
+                        ${KUBECTL} rollout status deployment/acefitness-app -n ${K8S_NAMESPACE} --timeout=5m
                     '''
                 }
             }
@@ -139,20 +140,20 @@ pipeline {
                         echo "Verifying Kubernetes deployment..."
                         
                         echo "=== Deployment Status ==="
-                        kubectl get deployments -n ${K8S_NAMESPACE}
+                        ${KUBECTL} get deployments -n ${K8S_NAMESPACE}
                         
                         echo "=== Pod Status ==="
-                        kubectl get pods -n ${K8S_NAMESPACE} -o wide
+                        ${KUBECTL} get pods -n ${K8S_NAMESPACE} -o wide
                         
                         echo "=== Service Status ==="
-                        kubectl get svc -n ${K8S_NAMESPACE}
+                        ${KUBECTL} get svc -n ${K8S_NAMESPACE}
                         
                         echo "=== Pod Logs ==="
-                        kubectl logs -n ${K8S_NAMESPACE} $(kubectl get pod -n ${K8S_NAMESPACE} -l app=acefitness -o jsonpath='{.items[0].metadata.name}') || true
+                        ${KUBECTL} logs -n ${K8S_NAMESPACE} $(${KUBECTL} get pod -n ${K8S_NAMESPACE} -l app=acefitness -o jsonpath='{.items[0].metadata.name}') || true
                         
                         echo "=== Testing Health Endpoint ==="
-                        POD_NAME=$(kubectl get pod -n ${K8S_NAMESPACE} -l app=acefitness -o jsonpath='{.items[0].metadata.name}')
-                        kubectl exec -n ${K8S_NAMESPACE} ${POD_NAME} -- curl -s http://localhost:5000/health || true
+                        POD_NAME=$(${KUBECTL} get pod -n ${K8S_NAMESPACE} -l app=acefitness -o jsonpath='{.items[0].metadata.name}')
+                        ${KUBECTL} exec -n ${K8S_NAMESPACE} ${POD_NAME} -- curl -s http://localhost:5000/health || true
                     '''
                 }
             }
@@ -163,9 +164,9 @@ pipeline {
                 script {
                     sh '''
                         echo "Blue-Green deployment manifests are available in k8s-blue-green.yaml"
-                        echo "To deploy Blue-Green: kubectl apply -f k8s-blue-green.yaml"
-                        echo "To switch to Green: kubectl patch service acefitness-bluegreen -n ${K8S_NAMESPACE} -p '{\"spec\":{\"selector\":{\"slot\":\"green\"}}}'
-                        echo "To rollback to Blue: kubectl patch service acefitness-bluegreen -n ${K8S_NAMESPACE} -p '{\"spec\":{\"selector\":{\"slot\":\"blue\"}}}'
+                        echo "To deploy Blue-Green: ${KUBECTL} apply -f k8s-blue-green.yaml"
+                        echo "To switch to Green: ${KUBECTL} patch service acefitness-bluegreen -n ${K8S_NAMESPACE} -p '{\"spec\":{\"selector\":{\"slot\":\"green\"}}}'
+                        echo "To rollback to Blue: ${KUBECTL} patch service acefitness-bluegreen -n ${K8S_NAMESPACE} -p '{\"spec\":{\"selector\":{\"slot\":\"blue\"}}}'
                     '''
                 }
             }
@@ -197,13 +198,13 @@ pipeline {
                         echo "3. Health check: http://<MINIKUBE_IP>:30000/health"
                         echo ""
                         echo "To view logs:"
-                        echo "kubectl logs -f deployment/acefitness-app -n ${K8S_NAMESPACE}"
+                        echo "${KUBECTL} logs -f deployment/acefitness-app -n ${K8S_NAMESPACE}"
                         echo ""
                         echo "To scale deployment:"
-                        echo "kubectl scale deployment acefitness-app -n ${K8S_NAMESPACE} --replicas=5"
+                        echo "${KUBECTL} scale deployment acefitness-app -n ${K8S_NAMESPACE} --replicas=5"
                         echo ""
                         echo "To rollback to previous version:"
-                        echo "kubectl rollout undo deployment/acefitness-app -n ${K8S_NAMESPACE}"
+                        echo "${KUBECTL} rollout undo deployment/acefitness-app -n ${K8S_NAMESPACE}"
                         echo ""
                         echo "======================================="
                     '''
