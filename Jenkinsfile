@@ -82,36 +82,11 @@ pipeline {
         stage('Docker Push') {
             steps {
                 script {
-                    withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    withDockerRegistry([credentialsId: 'dockerhub-credentials', url: 'https://index.docker.io/v1/']) {
                         sh '''
-                            # Clear any existing Docker config
-                            rm -rf ~/.docker
-                            mkdir -p ~/.docker
-                            
-                            # Write credentials to temp file and encode
-                            echo -n "${DOCKER_USER}:${DOCKER_PASS}" | base64 -w 0 > /tmp/docker_auth.b64
-                            AUTH_ENCODED=$(cat /tmp/docker_auth.b64)
-                            rm /tmp/docker_auth.b64
-                            
-                            # Create auth config
-                            cat > ~/.docker/config.json << EOF
-{
-  "auths": {
-    "https://index.docker.io/v1/": {
-      "auth": "${AUTH_ENCODED}"
-    }
-  }
-}
-EOF
-                            chmod 600 ~/.docker/config.json
-                            
-                            # Push images
                             docker push ${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER}
                             docker tag ${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER} ${DOCKER_HUB_REPO}:latest
                             docker push ${DOCKER_HUB_REPO}:latest
-                            
-                            # Clean up config
-                            rm -rf ~/.docker
                         '''
                     }
                 }
