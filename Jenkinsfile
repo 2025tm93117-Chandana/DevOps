@@ -88,16 +88,22 @@ pipeline {
                             rm -rf ~/.docker
                             mkdir -p ~/.docker
                             
-                            # Login using docker CLI directly
-                            echo "${DOCKER_PASS}" | docker login -u "${DOCKER_USER}" --password-stdin
+                            # Create auth config without passing password through pipe (to avoid masking issues)
+                            cat > ~/.docker/config.json << EOF
+{
+  "auths": {
+    "https://index.docker.io/v1/": {
+      "auth": "$(printf '%s:%s' "${DOCKER_USER}" "${DOCKER_PASS}" | base64 -w 0)"
+    }
+  }
+}
+EOF
+                            chmod 600 ~/.docker/config.json
                             
                             # Push images
                             docker push ${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER}
                             docker tag ${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER} ${DOCKER_HUB_REPO}:latest
                             docker push ${DOCKER_HUB_REPO}:latest
-                            
-                            # Logout
-                            docker logout
                             
                             # Clean up config
                             rm -rf ~/.docker
