@@ -3,7 +3,7 @@ pipeline {
 
     triggers {
         githubPush()
-        pollSCM('H/5 * * * *')
+        pollSCM('* * * * *')
     }
 
     options {
@@ -87,7 +87,7 @@ pipeline {
                         docker push ${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER}
                         docker tag ${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER} ${DOCKER_HUB_REPO}:latest
                         docker push ${DOCKER_HUB_REPO}:latest
-                        docker logout
+                        rm -f ~/.docker/config.json
                     '''
                 }
             }
