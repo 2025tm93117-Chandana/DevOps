@@ -89,7 +89,9 @@ pipeline {
 #!/bin/bash
 set -e
 mkdir -p ~/.docker
+rm -f ~/.docker/config.json
 echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(echo -n "$1:$2" | base64 -w 0)\"}}}" > ~/.docker/config.json
+chmod 600 ~/.docker/config.json
 docker push $3:3.0.0-build$4
 docker tag $3:3.0.0-build$4 $3:latest
 docker push $3:latest
