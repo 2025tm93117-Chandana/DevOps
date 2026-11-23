@@ -88,12 +88,16 @@ pipeline {
                             rm -rf ~/.docker
                             mkdir -p ~/.docker
                             
-                            # Create auth config without passing password through pipe (to avoid masking issues)
+                            # Write credentials to temp file (Jenkins won't mask file contents)
+                            CREDENTIALS="${DOCKER_USER}:${DOCKER_PASS}"
+                            AUTH_ENCODED=$(printf '%s' "${CREDENTIALS}" | base64 -w 0)
+                            
+                            # Create auth config
                             cat > ~/.docker/config.json << EOF
 {
   "auths": {
     "https://index.docker.io/v1/": {
-      "auth": "$(printf '%s:%s' "${DOCKER_USER}" "${DOCKER_PASS}" | base64 -w 0)"
+      "auth": "${AUTH_ENCODED}"
     }
   }
 }
