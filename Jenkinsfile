@@ -83,7 +83,17 @@ pipeline {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        mkdir -p ~/.docker
+                        ENCODED=$(echo -n "${DOCKER_USER}:${DOCKER_PASS}" | base64 -w 0)
+                        cat > ~/.docker/config.json <<EOF
+{
+  "auths": {
+    "https://index.docker.io/v1/": {
+      "auth": "${ENCODED}"
+    }
+  }
+}
+EOF
                         docker push ${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER}
                         docker tag ${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER} ${DOCKER_HUB_REPO}:latest
                         docker push ${DOCKER_HUB_REPO}:latest
