@@ -85,9 +85,19 @@ pipeline {
 
         stage('Docker Push') {
             steps {
-                echo "Docker image built successfully: ${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER}"
-                echo "Note: Manual docker login required for push due to Jenkins credential handling"
-                echo "To push manually run: docker push ${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER}"
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-credentials',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_TOKEN'
+                )]) {
+                    sh '''
+                        set +x
+                        export DOCKER_CONFIG="$(mktemp -d)"
+                        trap 'rm -f "$DOCKER_CONFIG/config.json"; rmdir "$DOCKER_CONFIG"' EXIT
+                        printf '%s' "$DOCKER_TOKEN" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker push "${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER}"
+                    '''
+                }
             }
         }
 
