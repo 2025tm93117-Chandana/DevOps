@@ -9,6 +9,7 @@ pipeline {
     options {
         timestamps()
         timeout(time: 15, unit: 'MINUTES')
+        disableConcurrentBuilds()
     }
 
     environment {
@@ -125,6 +126,15 @@ pipeline {
 
                         /var/lib/jenkins/bin/kubectl get deployment acefitness-app -n acefitness
                         /var/lib/jenkins/bin/kubectl auth can-i patch deployment/acefitness-app -n acefitness
+
+                        /var/lib/jenkins/bin/kubectl set image deployment/acefitness-app \
+                          "acefitness=${DOCKER_HUB_REPO}:3.0.0-build${BUILD_NUMBER}" -n acefitness
+                        
+                        if ! /var/lib/jenkins/bin/kubectl rollout status deployment/acefitness-app -n acefitness --timeout=180s; then
+                          /var/lib/jenkins/bin/kubectl rollout undo deployment/acefitness-app -n acefitness
+                          /var/lib/jenkins/bin/kubectl rollout status deployment/acefitness-app -n acefitness --timeout=180s
+                          exit 1
+                        fi
                     '''
                 }
             }
