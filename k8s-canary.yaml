@@ -1,7 +1,7 @@
 ---
 # Canary Deployment Strategy
-# 90% traffic to stable version, 10% to canary version
-# Gradually increase canary replicas as it proves stable
+# Traffic is distributed among ready stable and canary pods.
+# Replica counts do not guarantee an exact request distribution.
 
 apiVersion: apps/v1
 kind: Deployment
@@ -9,23 +9,23 @@ metadata:
   name: acefitness-stable
   namespace: acefitness
   labels:
-    app: acefitness
+    app: acefitness-canary
     version: stable
 spec:
-  replicas: 9  # 90% of traffic
+  replicas: 2
   selector:
     matchLabels:
-      app: acefitness
+      app: acefitness-canary
       version: stable
   template:
     metadata:
       labels:
-        app: acefitness
+        app: acefitness-canary
         version: stable
     spec:
       containers:
       - name: acefitness
-        image: 2025tm93117/acefitness:latest
+        image: 2025tm93117/acefitness:1.1.0-assignment
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5000
@@ -59,23 +59,23 @@ metadata:
   name: acefitness-canary
   namespace: acefitness
   labels:
-    app: acefitness
+    app: acefitness-canary
     version: canary
 spec:
-  replicas: 1  # 10% of traffic (1 out of 10 pods)
+  replicas: 1
   selector:
     matchLabels:
-      app: acefitness
+      app: acefitness-canary
       version: canary
   template:
     metadata:
       labels:
-        app: acefitness
+        app: acefitness-canary
         version: canary
     spec:
       containers:
       - name: acefitness
-        image: 2025tm93117/acefitness:latest
+        image: 2025tm93117/acefitness:3.0.0-build8
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5000
@@ -109,7 +109,7 @@ metadata:
   name: acefitness-canary
   namespace: acefitness
   labels:
-    app: acefitness
+    app: acefitness-canary
 spec:
   type: NodePort
   ports:
@@ -118,6 +118,4 @@ spec:
     protocol: TCP
     nodePort: 30002
   selector:
-    app: acefitness
-  # Both stable and canary pods will receive traffic proportionally
-  # 9 stable pods : 1 canary pod = 90% : 10% traffic split
+    app: acefitness-canary
