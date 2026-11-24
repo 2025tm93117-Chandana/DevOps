@@ -1,8 +1,7 @@
 ---
 # Blue-Green Deployment Strategy
-# This manifests shows how to do Blue-Green deployments
-# Blue = current version (v1), Green = new version (v2)
-# To switch traffic, change the selector in the service from version: v1 to version: v2
+# Blue = version 1.1.0, Green = version 3.0.0
+# Scale up green and wait for readiness before switching the service slot.
 
 apiVersion: apps/v1
 kind: Deployment
@@ -10,24 +9,24 @@ metadata:
   name: acefitness-blue
   namespace: acefitness
   labels:
-    app: acefitness
+    app: acefitness-bluegreen
     slot: blue
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: acefitness
+      app: acefitness-bluegreen
       slot: blue
   template:
     metadata:
       labels:
-        app: acefitness
+        app: acefitness-bluegreen
         slot: blue
         version: v1
     spec:
       containers:
       - name: acefitness
-        image: 2025tm93117/acefitness:latest
+        image: 2025tm93117/acefitness:1.1.0-assignment
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5000
@@ -61,24 +60,24 @@ metadata:
   name: acefitness-green
   namespace: acefitness
   labels:
-    app: acefitness
+    app: acefitness-bluegreen
     slot: green
 spec:
   replicas: 0  # Initially 0, scale up when ready to switch
   selector:
     matchLabels:
-      app: acefitness
+      app: acefitness-bluegreen
       slot: green
   template:
     metadata:
       labels:
-        app: acefitness
+        app: acefitness-bluegreen
         slot: green
         version: v2
     spec:
       containers:
       - name: acefitness
-        image: 2025tm93117/acefitness:latest
+        image: 2025tm93117/acefitness:3.0.0-build8
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5000
@@ -112,7 +111,7 @@ metadata:
   name: acefitness-bluegreen
   namespace: acefitness
   labels:
-    app: acefitness
+    app: acefitness-bluegreen
 spec:
   type: NodePort
   ports:
@@ -121,5 +120,5 @@ spec:
     protocol: TCP
     nodePort: 30001
   selector:
-    app: acefitness
+    app: acefitness-bluegreen
     slot: blue  # Change to 'green' to switch traffic
