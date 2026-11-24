@@ -173,6 +173,40 @@ pipeline {
         }
     }
 
+    stage('Verify Kubernetes Access') {
+            steps {
+                withCredentials([string(credentialsId: 'k8s-deployer-token', variable: 'K8S_TOKEN')]) {
+                    sh '''
+                        set +x
+                        umask 077
+                        export KUBECONFIG="$(mktemp)"
+                        trap 'rm -f "$KUBECONFIG"' EXIT
+        
+                        python3 -c '
+        import json, os
+        config = {
+            "apiVersion": "v1",
+            "kind": "Config",
+            "clusters": [{"name": "minikube", "cluster": {
+                "server": "https://192.168.49.2:8443",
+                "certificate-authority": "/var/lib/jenkins/acefitness-minikube-ca.crt"
+            }}],
+            "users": [{"name": "jenkins", "user": {"token": os.environ["K8S_TOKEN"]}}],
+            "contexts": [{"name": "jenkins", "context": {
+                "cluster": "minikube", "user": "jenkins", "namespace": "acefitness"
+            }}],
+            "current-context": "jenkins"
+        }
+        with open(os.environ["KUBECONFIG"], "w") as f:
+            json.dump(config, f)
+        '
+                        /var/lib/jenkins/bin/kubectl get deployment acefitness-app -n acefitness
+                        /var/lib/jenkins/bin/kubectl auth can-i patch deployment/acefitness-app -n acefitness
+                    '''
+                }
+            }
+    }
+
     post {
         success { echo 'Build succeeded.' }
         failure { echo 'Build failed.' }
