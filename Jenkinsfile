@@ -19,7 +19,7 @@ pipeline {
         KUBECONFIG = '/home/jenkins/.kube/config'
         K8S_NAMESPACE = 'acefitness'
         KUBECTL = '/usr/local/bin/minikube kubectl --'
-        HOME = '/home/jenkins'
+        HOME = '/var/lib/jenkins'
     }
 
     stages {
