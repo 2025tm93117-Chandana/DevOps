@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
       - name: acefitness
-        image: 2025tm93117/acefitness:latest
+        image: 2025tm93117/acefitness:3.0.0-build8
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 5000
